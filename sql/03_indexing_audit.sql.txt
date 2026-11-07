@@ -1,0 +1,86 @@
+-- =========================================================================
+-- ProjectRwanda SACCO - Performance Indexing & Automated Audit Logging
+-- Dialect: PostgreSQL / pgAdmin 4
+-- Focus: Database Administration, Performance Tuning, & Security Auditing
+-- =========================================================================
+
+-- -------------------------------------------------------------------------
+-- PART 1: STRATEGIC INDEXING FOR PERFORMANCE TUNING
+-- -------------------------------------------------------------------------
+
+-- 1. Index on Member National ID for fast customer lookup
+CREATE INDEX IF NOT EXISTS idx_members_national_id 
+ON Members(NationalID);
+
+-- 2. Index on Account Number for instant balance checks and transaction lookups
+CREATE INDEX IF NOT EXISTS idx_accounts_account_number 
+ON SavingsAccounts(AccountNumber);
+
+-- 3. Composite Index on Loans for querying member loan statuses
+CREATE INDEX IF NOT EXISTS idx_loans_member_status 
+ON Loans(MemberID, Status);
+
+-- 4. Index on Repayments Due Date to speed up overdue payment reports
+CREATE INDEX IF NOT EXISTS idx_repayments_due_date 
+ON Repayments(DueDate, Status);
+
+-- 5. Index on Transactions Timestamp for financial reporting and audit trails
+CREATE INDEX IF NOT EXISTS idx_transactions_timestamp 
+ON Transactions(Timestamp);
+
+
+-- -------------------------------------------------------------------------
+-- PART 2: AUTOMATED AUDIT LOGGING (PostgreSQL PL/pgSQL Triggers)
+-- -------------------------------------------------------------------------
+
+-- Step 2A: Create Audit Function for Account Balance Changes
+CREATE OR REPLACE FUNCTION audit_savings_balance_update()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Only write log entry if balance actually changes
+    IF OLD.Balance <> NEW.Balance THEN
+        INSERT INTO AuditLogs (StaffID, ActionStatement, Timestamp)
+        VALUES (
+            NULL, -- System automated event
+            CONCAT('Account ', NEW.AccountNumber, ' balance changed from RWF ', 
+                   OLD.Balance, ' to RWF ', NEW.Balance),
+            CURRENT_TIMESTAMP
+        );
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Step 2B: Bind Audit Function to SavingsAccounts Table
+DROP TRIGGER IF EXISTS trg_audit_balance_update ON SavingsAccounts;
+
+CREATE TRIGGER trg_audit_balance_update
+AFTER UPDATE ON SavingsAccounts
+FOR EACH ROW
+EXECUTE FUNCTION audit_savings_balance_update();
+
+
+-- Step 2C: Create Audit Function for Loan Status Updates
+CREATE OR REPLACE FUNCTION audit_loan_status_change()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF OLD.Status <> NEW.Status THEN
+        INSERT INTO AuditLogs (StaffID, ActionStatement, Timestamp)
+        VALUES (
+            NULL,
+            CONCAT('Loan ID ', NEW.LoanID, ' status changed from "', 
+                   OLD.Status, '" to "', NEW.Status, '"'),
+            CURRENT_TIMESTAMP
+        );
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Step 2D: Bind Audit Function to Loans Table
+DROP TRIGGER IF EXISTS trg_audit_loan_status_change ON Loans;
+
+CREATE TRIGGER trg_audit_loan_status_change
+AFTER UPDATE ON Loans
+FOR EACH ROW
+EXECUTE FUNCTION audit_loan_status_change();

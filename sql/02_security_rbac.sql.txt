@@ -1,0 +1,11 @@
+-- Create database roles
+CREATE ROLE sacco_teller;
+CREATE ROLE sacco_manager;
+
+-- Grant minimal permissions to Tellers
+GRANT SELECT, INSERT ON Members TO sacco_teller;
+GRANT SELECT, UPDATE ON SavingsAccounts TO sacco_teller;
+GRANT SELECT, INSERT ON Transactions TO sacco_teller;
+
+-- Grant administrative permissions to Managers
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO sacco_manager;

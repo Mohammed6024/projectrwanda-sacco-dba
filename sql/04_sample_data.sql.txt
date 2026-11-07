@@ -1,0 +1,64 @@
+-- =========================================================================
+-- ProjectRwanda SACCO - Sample Data & DBA Transaction Testing Script
+-- Dialect: PostgreSQL / pgAdmin 4 (Corrected for Identity Columns)
+-- =========================================================================
+
+-- -------------------------------------------------------------------------
+-- PART 1: INSERT SAMPLE DATA (Auto-generating IDs via Sequences)
+-- -------------------------------------------------------------------------
+
+-- 1. Insert Staff 
+INSERT INTO Staff (Username, Role) VALUES
+('jean.manager', 'Manager'),
+('marie.teller', 'Teller'),
+('eric.dba', 'DBA');
+
+-- 2. Insert Members (Rwandan context)
+INSERT INTO Members (NationalID, FullName, Phone, Email) VALUES
+('1199880011223344', 'Jean Paul Kagabo', '+250788111222', 'jp.kagabo@sacco.rw'),
+('1199770044556677', 'Claudine Mukamana', '+250789333444', 'claudine.m@sacco.rw'),
+('1199660077889900', 'Patrick Habimana', '+250783555666', 'patrick.h@sacco.rw');
+
+-- 3. Insert Savings Accounts (Referencing MemberID 1, 2, 3 respectively)
+INSERT INTO SavingsAccounts (MemberID, AccountNumber, AccountType, Balance) VALUES
+(1, 'ACC-SAV-001', 'Mandatory', 150000.00),
+(2, 'ACC-SAV-002', 'Voluntary', 350000.00),
+(3, 'ACC-SAV-003', 'Fixed', 1200000.00);
+
+-- 4. Insert Loans
+INSERT INTO Loans (MemberID, PrincipalAmount, InterestRate, Status) VALUES
+(1, 500000.00, 12.50, 'Approved'),
+(2, 1000000.00, 10.00, 'Pending');
+
+-- 5. Insert Repayments (Referencing LoanID 1)
+INSERT INTO Repayments (LoanID, DueDate, AmountDue, AmountPaid, Status) VALUES
+(1, '2026-06-30', 50000.00, 50000.00, 'Paid'),
+(1, '2026-07-30', 50000.00, 0.00, 'Pending');
+
+-- 6. Insert Transactions (Referencing AccountID and StaffID)
+INSERT INTO Transactions (AccountID, ProcessedByStaff, TransactionType, Amount) VALUES
+(1, 2, 'Deposit', 50000.00),
+(2, 2, 'Deposit', 200000.00);
+
+
+-- -------------------------------------------------------------------------
+-- PART 2: ACID TRANSACTION & AUDIT TRIGGER TEST SCRIPT
+-- -------------------------------------------------------------------------
+-- Run this test block to prove transaction safety and automated auditing
+
+BEGIN;
+
+-- Step A: Record a deposit transaction
+INSERT INTO Transactions (AccountID, ProcessedByStaff, TransactionType, Amount) 
+VALUES (1, 2, 'Deposit', 25000.00);
+
+-- Step B: Update account balance (This automatically fires your audit trigger!)
+UPDATE SavingsAccounts 
+SET Balance = Balance + 25000.00 
+WHERE AccountID = 1;
+
+-- Step C: Finalize the transaction
+COMMIT;
+
+-- Step D: Verify that the audit log captured the balance modification automatically
+SELECT * FROM AuditLogs;
