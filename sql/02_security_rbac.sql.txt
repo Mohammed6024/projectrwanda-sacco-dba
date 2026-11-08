@@ -8,4 +8,3 @@ GRANT SELECT, UPDATE ON SavingsAccounts TO sacco_teller;
 GRANT SELECT, INSERT ON Transactions TO sacco_teller;
 
 -- Grant administrative permissions to Managers
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO sacco_manager;
