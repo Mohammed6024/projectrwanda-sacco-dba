@@ -1,67 +1,60 @@
--- 1. Members Table
-CREATE TABLE Members (
-    MemberID INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    NationalID VARCHAR(16) UNIQUE NOT NULL,
-    FullName VARCHAR(100) NOT NULL,
-    Phone VARCHAR(15) NOT NULL,
-    Email VARCHAR(100),
-    RegistrationDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+-- ==========================================
+-- 8. Additional Data Integrity Constraints
+-- ==========================================
+
+-- Validate loan interest rates
+ALTER TABLE Loans
+ADD CONSTRAINT chk_loan_interest_rate
+CHECK (InterestRate BETWEEN 0 AND 100);
+
+-- Validate repayment amounts
+ALTER TABLE Repayments
+ADD CONSTRAINT chk_amount_due_positive
+CHECK (AmountDue > 0);
+
+ALTER TABLE Repayments
+ADD CONSTRAINT chk_amount_paid_valid
+CHECK (AmountPaid >= 0 AND AmountPaid <= AmountDue);
+
+-- Ensure payment date matches payment amount
+ALTER TABLE Repayments
+ADD CONSTRAINT chk_payment_date
+CHECK (
+    (AmountPaid = 0 AND PaymentDate IS NULL)
+    OR
+    (AmountPaid > 0 AND PaymentDate IS NOT NULL)
 );
 
--- 2. Staff Table
-CREATE TABLE Staff (
-    StaffID INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    Username VARCHAR(50) UNIQUE NOT NULL,
-    Role VARCHAR(20) CHECK (Role IN ('Teller', 'Manager', 'DBA')) NOT NULL
+-- A paid repayment must be fully paid
+ALTER TABLE Repayments
+ADD CONSTRAINT chk_paid_repayment
+CHECK (
+    Status <> 'Paid'
+    OR AmountPaid = AmountDue
 );
 
--- 3. Savings Accounts Table
-CREATE TABLE SavingsAccounts (
-    AccountID INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    MemberID INT NOT NULL REFERENCES Members(MemberID) ON DELETE RESTRICT,
-    AccountNumber VARCHAR(20) UNIQUE NOT NULL,
-    AccountType VARCHAR(20) CHECK (AccountType IN ('Mandatory', 'Voluntary', 'Fixed')) NOT NULL,
-    Balance DECIMAL(12, 2) DEFAULT 0.00 CHECK (Balance >= 0),
-    OpenedDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+-- ==========================================
+-- 9. Performance Indexes
+-- ==========================================
 
--- 4. Loans Table
-CREATE TABLE Loans (
-    LoanID INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    MemberID INT NOT NULL REFERENCES Members(MemberID),
-    PrincipalAmount DECIMAL(12, 2) NOT NULL CHECK (PrincipalAmount > 0),
-    InterestRate DECIMAL(4, 2) NOT NULL,
-    Status VARCHAR(20) DEFAULT 'Pending' CHECK (Status IN ('Pending', 'Approved', 'Repaid', 'Defaulted')),
-    ApplicationDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+CREATE INDEX idx_savings_member
+ON SavingsAccounts(MemberID);
 
--- 5. Repayments Table
-CREATE TABLE Repayments (
-    RepaymentID INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    LoanID INT NOT NULL REFERENCES Loans(LoanID),
-    DueDate DATE NOT NULL,
-    AmountDue DECIMAL(12, 2) NOT NULL,
-    AmountPaid DECIMAL(12, 2) DEFAULT 0.00,
-    PaymentDate TIMESTAMP,
-    Status VARCHAR(20) DEFAULT 'Pending' CHECK (Status IN ('Pending', 'Paid', 'Overdue'))
-);
+CREATE INDEX idx_loans_member
+ON Loans(MemberID);
 
--- 6. Transactions Table
-CREATE TABLE Transactions (
-    TransactionID INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    AccountID INT NOT NULL REFERENCES SavingsAccounts(AccountID),
-    ProcessedByStaff INT NOT NULL REFERENCES Staff(StaffID),
-    TransactionType VARCHAR(20) CHECK (TransactionType IN ('Deposit', 'Withdrawal')) NOT NULL,
-    Amount DECIMAL(12, 2) NOT NULL CHECK (Amount > 0),
-    Timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+CREATE INDEX idx_repayments_loan
+ON Repayments(LoanID);
 
--- 7. Auditlogs Table
-CREATE TABLE AuditLogs (
-    LogID INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    StaffID INT REFERENCES Staff(StaffID),
-    ActionStatement TEXT NOT NULL,
-    Timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    IPAddress VARCHAR(45)
-);
+CREATE INDEX idx_transactions_account
+ON Transactions(AccountID);
 
+CREATE INDEX idx_transactions_staff
+ON Transactions(ProcessedByStaff);
+
+CREATE INDEX idx_auditlogs_staff
+ON AuditLogs(StaffID);
+
+CREATE INDEX idx_transactions_timestamp
+ON Transactions("Timestamp");
