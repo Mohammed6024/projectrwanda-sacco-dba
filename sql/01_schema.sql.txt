@@ -63,4 +63,4 @@ CREATE TABLE AuditLogs (
     ActionStatement TEXT NOT NULL,
     Timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     IPAddress VARCHAR(45)
-);
+
