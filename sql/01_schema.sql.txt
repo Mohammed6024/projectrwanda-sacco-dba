@@ -64,3 +64,8 @@ CREATE TABLE AuditLogs (
     Timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     IPAddress VARCHAR(45)
 );
+
+CREATE TRIGGER trg_audit_loan_status_change
+AFTER UPDATE ON Loans
+FOR EACH ROW
+EXECUTE FUNCTION audit_loan_status_change();
