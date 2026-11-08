@@ -6,6 +6,7 @@
 
 -- -------------------------------------------------------------------------
 -- PART 1: STRATEGIC INDEXING FOR PERFORMANCE TUNING
+
 -- -------------------------------------------------------------------------
 
 -- 1. Index on Member National ID for fast customer lookup
@@ -83,4 +84,6 @@ DROP TRIGGER IF EXISTS trg_audit_loan_status_change ON Loans;
 CREATE TRIGGER trg_audit_loan_status_change
 AFTER UPDATE ON Loans
 FOR EACH ROW
+
+
 EXECUTE FUNCTION audit_loan_status_change();
